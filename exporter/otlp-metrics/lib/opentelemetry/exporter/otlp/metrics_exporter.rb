@@ -85,7 +85,14 @@ module OpenTelemetry
 
         # metrics Array[MetricData]
         def export(metrics, timeout: nil)
+          puts "-" * 150
+          puts "Syncing export"
+          puts "-" * 150
           @mutex.synchronize do
+            puts "/" * 150
+            puts "Encoding and sending metrics"
+            p metrics
+            puts "/" * 150
             send_bytes(encode(metrics), timeout: timeout)
           end
         end
@@ -119,6 +126,14 @@ module OpenTelemetry
             @http.write_timeout = remaining_timeout if WRITE_TIMEOUT_SUPPORTED
             @http.start unless @http.started?
             response = measure_request_duration { @http.request(request) }
+            puts "#" * 150
+            puts "HTTP response body"
+            p response.body
+            puts "Code: #{response.code}"
+            puts "Msg: #{response.message}"
+            puts "Class: #{response.class}"
+            puts "Inspect: #{response.inspect}"
+            puts "#" * 150
             case response
             when Net::HTTPOK
               response.body # Read and discard body
@@ -151,29 +166,36 @@ module OpenTelemetry
             end
           rescue Net::OpenTimeout, Net::ReadTimeout
             retry if backoff?(retry_count: retry_count += 1, reason: 'timeout')
+            puts 'Net::OpenTimeout/Net::ReadTimeout in MetricsExporter#send_bytes'
             OpenTelemetry.logger.warn('Net::OpenTimeout/Net::ReadTimeout in MetricsExporter#send_bytes')
             return FAILURE
           rescue OpenSSL::SSL::SSLError
             retry if backoff?(retry_count: retry_count += 1, reason: 'openssl_error')
+            puts 'OpenSSL::SSL::SSLError in MetricsExporter#send_bytes'
             OpenTelemetry.logger.warn('OpenSSL::SSL::SSLError in MetricsExporter#send_bytes')
             return FAILURE
           rescue SocketError
             retry if backoff?(retry_count: retry_count += 1, reason: 'socket_error')
+            puts('SocketError in MetricsExporter#send_bytes')
             OpenTelemetry.logger.warn('SocketError in MetricsExporter#send_bytes')
             return FAILURE
           rescue SystemCallError => e
             retry if backoff?(retry_count: retry_count += 1, reason: e.class.name)
+            puts('SystemCallError in MetricsExporter#send_bytes')
             OpenTelemetry.logger.warn('SystemCallError in MetricsExporter#send_bytes')
             return FAILURE
           rescue EOFError
             retry if backoff?(retry_count: retry_count += 1, reason: 'eof_error')
+            puts('EOFError in MetricsExporter#send_bytes')
             OpenTelemetry.logger.warn('EOFError in MetricsExporter#send_bytes')
             return FAILURE
           rescue Zlib::DataError
             retry if backoff?(retry_count: retry_count += 1, reason: 'zlib_error')
+            puts('Zlib::DataError in MetricsExporter#send_bytes')
             OpenTelemetry.logger.warn('Zlib::DataError in MetricsExporter#send_bytes')
             return FAILURE
           rescue StandardError => e
+            puts "StandardError in send_bytes - #{e}"
             OpenTelemetry.handle_error(exception: e, message: 'unexpected error in OTLP::MetricsExporter#send_bytes')
             return FAILURE
           end
