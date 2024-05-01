@@ -31,6 +31,7 @@ module OpenTelemetry
             if increment.negative?
               OpenTelemetry.logger.warn("#{@name} received a negative value")
             else
+              puts "Updating counter: #{@name} - #{increment}"
               update(increment, attributes)
             end
             nil

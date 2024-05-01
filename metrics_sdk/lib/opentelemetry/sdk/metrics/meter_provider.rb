@@ -104,10 +104,12 @@ module OpenTelemetry
         #
         # @param metric_reader the new MetricReader to be added.
         def add_metric_reader(metric_reader)
+          puts "Syncing #add_metric_reader"
           @mutex.synchronize do
             if @stopped
               OpenTelemetry.logger.warn('calling MetricProvider#add_metric_reader after shutdown.')
             else
+              puts "Adding metric reader"
               @metric_readers.push(metric_reader)
               @meter_registry.each_value { |meter| meter.add_metric_reader(metric_reader) }
             end
